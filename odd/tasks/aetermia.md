@@ -34,6 +34,10 @@ S11. When a task has notes, its card shows a visible indicator and the detail vi
 
 S12. Target hosting: Vercel (app) + Supabase (database and auth). No other services.
 
+S13. A project can be renamed and its description edited after creation, from the project screen.
+
+S14. A status or assignee change must be persisted. When the write fails, the screen must say so instead of leaving the control showing a value the database never accepted.
+
 ## Tasks
 
 - [x] T1 — Scaffold Next.js (App Router, TypeScript, no Tailwind, plain CSS). `S9` — inline. Evidence: Next 16.4.6, `next.config.ts` with cache flags off.
@@ -45,6 +49,8 @@ S12. Target hosting: Vercel (app) + Supabase (database and auth). No other servi
 - [x] T7 — Build, typecheck, lint, click-through, README with the two manual Supabase steps. `S12` — inline. Evidence: `npm run build` OK, `npm run lint` OK, HTTP smoke test OK. Authenticated screens still need a real Supabase project.
 - [x] T8 — Mobile header and login accessibility. `S10` — inline. Evidence: brand wordmark hidden below 480px, `aria-label` keeps the link named; login gets a visually hidden `h1`. `npm run build` and `npm run lint` pass. Not visually measured yet (no Supabase project).
 - [x] T9 — Local stand-in so the UI can be reviewed without a Supabase project. `S1,S4,S5,S7,S11` — inline. Evidence: `lib/dev-db.ts`, self-check `lib/dev-db.test.mjs` (6/6 pass), full HTTP click-through recorded in L12.
+- [x] T10 — Edit project name and description. `S13` — inline. Evidence: `updateProject` in `app/actions.ts`, `Editar proyecto` details block on the project screen. Clicked in the browser: renamed to "Tablero Aetermia" with a corrected description, and the home grid showed both.
+- [x] T11 — Surface write failures on task edits. `S14` — inline. Evidence: `patchTask` redirects with `?error=1` when Supabase returns an error, and the project screen renders `No se pudo guardar el cambio.`
 
 
 ## Log
@@ -74,4 +80,10 @@ L11 (blocker): without `.env.local` every route throws, because `createClient` r
 L12 (verification, click-through): `docker`, `psql` and WSL distros are all absent, so `supabase start` is not an option on this machine. Instead `lib/dev-db.ts` implements the slice of the Supabase client the app uses, behind `AETERMIA_LOCAL_DB=1`. Click-through against the dev server, action by action: `GET /` 307 to `/login`; `GET /login` 200 with the form; login action 303 with the session cookie; `GET /` 200 rendering `Aetermio saludos, Ezequiel` and `Saludos, Ezequiel`; seeded project page renders the four columns with 4 `Asignarme` buttons, 1 note chip, 1 `Ver nota`, 3 `Agregar nota`; create task 200 and the task appears (5 cards, 2 chips); status to `done` moves it (column counts 1/1/2/1); `Asignarme` sets the assignee; `saveNotes` overwrites the note text; create project 200 and the grid grows to 2; second login as `ana@aetermia.dev` renders `Aetermio saludos, Ana` and the assignee dropdown lists both names; logout 303 to `/login` with an empty cookie. No errors or warnings in the dev server log.
 
 L13 (limit of T9): the stand-in returns full rows and ignores the `select` column list, has no RLS, no GoTrue and no profile trigger, and keeps data in a `globalThis` map that dies on restart. It is a UI harness. The real Supabase path is still unexercised (L11).
+
+L14 (user, verbatim): "Bien, falta que se pueda editar los proyectos (por si olvidé algo en la descripción o cambio el titulo) y que caudno cambio de estado una tarea esta cambie realmente"
+
+L15 (verification, browser): the status change was already working. In a real browser session, moving `Tarea pendiente` from Pendiente to Completada moved the card to the other column with no reload (Pendiente went to 0 and rendered "Nada acá", Completada to 2), and a follow-up read of the same project confirmed `data-status="done"` persisted. The failure the user feared is real but different: `patchTask` ignored the Supabase error and the select is uncontrolled, so a rejected write would leave the control showing a value the database rejected. T11 closes that.
+
+L16 (gotcha): changing the status requires hydration. A select fired before React attaches its `onChange` does nothing and the page keeps the old value, which looks exactly like a broken write. Uncontrolled selects were left as they are for server-action forms; making them controlled would reset the value before `requestSubmit` serializes it.
 

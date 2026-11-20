@@ -277,6 +277,20 @@ textarea {
   margin: 0 0 14px;
 }
 
+.edit {
+  margin-bottom: 8px;
+}
+
+.edit summary {
+  color: var(--green);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.edit[open] summary {
+  margin-bottom: 10px;
+}
+
 .empty {
   border: 1px dashed var(--line);
   border-radius: var(--radius);

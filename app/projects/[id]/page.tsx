@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createTask } from "@/app/actions";
+import { createTask, updateProject } from "@/app/actions";
 import { SubmitButton } from "@/app/submit-button";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -53,11 +53,40 @@ export default async function ProjectPage({
       <h1>{project.name}</h1>
       <p className="lede">{project.description ?? "Sin descripción."}</p>
 
+      {error ? (
+        <p className="error">No se pudo guardar el cambio.</p>
+      ) : null}
+
+      <details className="edit">
+        <summary>Editar proyecto</summary>
+        <form action={updateProject} className="panel stack">
+          <input type="hidden" name="project_id" value={project.id} />
+          <div className="two">
+            <label>
+              Nombre
+              <input
+                name="name"
+                defaultValue={project.name}
+                required
+                maxLength={80}
+              />
+            </label>
+            <label>
+              Descripción (opcional)
+              <input
+                name="description"
+                defaultValue={project.description ?? ""}
+                maxLength={200}
+              />
+            </label>
+          </div>
+          <SubmitButton className="btn">Guardar proyecto</SubmitButton>
+        </form>
+      </details>
+
       <section className="section">
         <h2>Nueva tarea</h2>
         <div className="panel">
-          {error ? <p className="error">No se pudo crear la tarea.</p> : null}
-
           <form action={createTask} className="stack">
             <input type="hidden" name="project_id" value={project.id} />
             <div className="two">

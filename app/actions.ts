@@ -64,11 +64,33 @@ async function patchTask(
   patch: Record<string, unknown>,
 ) {
   const supabase = await createClient();
-  await supabase
+  const { error } = await supabase
     .from("tasks")
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq("id", taskId);
+
+  // Surface the failure: an unchecked write leaves the select showing a value
+  // the database never accepted.
+  if (error) redirect(`/projects/${projectId}?error=1`);
   revalidatePath(`/projects/${projectId}`);
+}
+
+export async function updateProject(formData: FormData) {
+  const projectId = text(formData, "project_id");
+  const name = text(formData, "name");
+  const back = `/projects/${projectId}`;
+
+  if (!projectId || !name) redirect(`${back}?error=1`);
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("projects")
+    .update({ name, description: text(formData, "description") || null })
+    .eq("id", projectId);
+
+  if (error) redirect(`${back}?error=1`);
+  revalidatePath("/");
+  revalidatePath(back);
 }
 
 export async function setTaskStatus(formData: FormData) {

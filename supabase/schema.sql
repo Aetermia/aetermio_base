@@ -1,0 +1,65 @@
+-- Aetermia schema. Run this once in the Supabase SQL editor.
+
+create type public.task_status as enum ('todo', 'in_progress', 'done', 'cancelled');
+
+create table public.profiles (
+  id uuid primary key references auth.users (id) on delete cascade,
+  display_name text not null,
+  created_at timestamptz not null default now()
+);
+
+create table public.projects (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  description text,
+  archived boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create table public.tasks (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references public.projects (id) on delete cascade,
+  title text not null,
+  notes text,
+  status public.task_status not null default 'todo',
+  assignee_id uuid references public.profiles (id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index tasks_project_id_idx on public.tasks (project_id);
+
+-- Every logged-in user is a superadmin: one policy per table, no roles.
+alter table public.profiles enable row level security;
+alter table public.projects enable row level security;
+alter table public.tasks enable row level security;
+
+create policy "authenticated full access" on public.profiles
+  for all to authenticated using (true) with check (true);
+
+create policy "authenticated full access" on public.projects
+  for all to authenticated using (true) with check (true);
+
+create policy "authenticated full access" on public.tasks
+  for all to authenticated using (true) with check (true);
+
+-- Users are created by hand in the dashboard, so the profile row follows them.
+create function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, display_name)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data ->> 'full_name', split_part(new.email, '@', 1))
+  );
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();

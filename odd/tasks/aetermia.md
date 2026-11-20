@@ -46,6 +46,10 @@ S17. A project has links: a label the group recognizes plus a URL, listed on the
 
 S18. A status or assignee change is applied by an explicit `Guardar` button inside the task card, not on select change. After it saves, the control shows the stored value without a reload: an uncontrolled select keeps whatever the user last picked, so it must be keyed on the stored value.
 
+S19. A task's title and note are editable from the card through an `Editar` block. Notes and title save together; there is no separate note editor.
+
+S20. The intro must dismiss even if no JavaScript ever runs. Its timings are CSS animations, and the page reveals itself from a CSS rule, so a failed or slow hydration cannot leave the app green forever.
+
 ## Tasks
 
 - [x] T1 — Scaffold Next.js (App Router, TypeScript, no Tailwind, plain CSS). `S9` — inline. Evidence: Next 16.4.6, `next.config.ts` with cache flags off.
@@ -63,6 +67,8 @@ S18. A status or assignee change is applied by an explicit `Guardar` button insi
 - [x] T14 — Four-column board restored, horizontally scrollable under 760px. `S15` — inline. Evidence: at 390px the board measured 350px wide with 962px of scroll width; at 1280px the four columns show at once.
 - [x] T15 — Selects stacked inside the card so labels never clip. `S16` — inline. Evidence: 0 of 8 selects report `scrollWidth > clientWidth` at 390px, and the desktop board shows `Completada`, `En progreso`, `Sin asignar` in full.
 - [x] T16 — Explicit `Guardar` in the task card, replacing the `onChange` auto-submit. `S18` — inline. Evidence: select changed to Completada without saving left the columns untouched; pressing `Guardar` moved the card (Pendiente 1→0, Completada 1→2). Same for the assignee: `Ezequiel` persisted and the control showed it without a reload.
+- [x] T17 — Edit a task's title and note from the card. `S19` — inline. Evidence: `updateTask` replaces `saveNotes`; the `Editar` block swapped the separate note editor. Renamed `Tarea pendiente` to `Tarea renombrada` in the browser and the column re-rendered with the new title.
+- [x] T18 — Intro dismissal moved to CSS. `S20` — inline. Evidence: with `.welcome` and `.page` injected into a live page and no React involved, the page computed `visibility: hidden` at t=0 and `visible` at t=2600 while the overlay went to `hidden`. Full login run: overlay visible and page hidden at the start, overlay out of the DOM, page visible, URL cleaned.
 
 
 ## Log
@@ -116,4 +122,10 @@ L23 (root cause of "no cambia"): the write was fine, the control was lying. `Tas
 L24 (decision): the auto-submit on `select` change is gone. Saving is an explicit `Guardar` inside the card, which also removes the hydration race that made a change silently do nothing right after load. One form now saves status and assignee together; `Asignarme` remains a one-click shortcut.
 
 L25 (tabs rolled back): T14 shipped status tabs and the user asked for the board back. The board is restored. The original "no cambia" was the stale control, not the layout, so the reason I wrote for the tabs (L18) was incomplete.
+
+L26 (user, verbatim): "Bien, falta que las tareas tengan un botón de editar e IMPORTANTE, el fundido aparece al logar pero NO SE VA"
+
+L27 (intro): could not reproduce a stuck overlay. A sampling run installed before the login click recorded the real timeline: `/?welcome=1` with the overlay visible and the page hidden, page visible at +2050ms, overlay gone at +2350ms, URL cleaned right after. But that dismissal depended on React hydration and on `router.replace`, so a failed hydration or a stale dev bundle would leave the green screen forever with no way out. The timing now lives in CSS: `.welcome` fades itself to `visibility: hidden` at 2500ms and `.page` reveals itself at 2500ms through `page-in`. The JS only removes the overlay and cleans the URL. Verified with `.welcome` and `.page` injected outside React: hidden at t=0, visible at t=2600.
+
+L28 (reduced motion): the global `animation: none !important` would have left `.page` hidden forever, since its only reveal is an animation. The reduced-motion block sets `.page { visibility: visible }` and hides the overlay, so that path also cannot strand the page.
 

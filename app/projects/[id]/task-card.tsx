@@ -1,6 +1,6 @@
 "use client";
 
-import { assignToMe, saveNotes, saveTask } from "@/app/actions";
+import { assignToMe, saveTask, updateTask } from "@/app/actions";
 import {
   STATUS_LABELS,
   STATUS_ORDER,
@@ -77,18 +77,29 @@ export function TaskCard({
       </div>
 
       <details>
-        <summary>{task.notes ? "Ver nota" : "Agregar nota"}</summary>
-        <form action={saveNotes} className="stack">
+        <summary>Editar</summary>
+        <form action={updateTask} className="stack">
           <input type="hidden" name="task_id" value={task.id} />
           <input type="hidden" name="project_id" value={projectId} />
-          <textarea
-            name="notes"
-            defaultValue={task.notes ?? ""}
-            maxLength={500}
-            aria-label="Nota"
-          />
+          <label>
+            Título
+            <input
+              name="title"
+              defaultValue={task.title}
+              required
+              maxLength={120}
+            />
+          </label>
+          <label>
+            Nota
+            <textarea
+              name="notes"
+              defaultValue={task.notes ?? ""}
+              maxLength={500}
+            />
+          </label>
           <button className="mini" type="submit">
-            Guardar nota
+            Guardar cambios
           </button>
         </form>
       </details>

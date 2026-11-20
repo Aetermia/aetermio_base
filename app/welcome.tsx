@@ -4,11 +4,9 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-// The page mounts when the overlay starts fading, so the reveal is a crossfade.
-const REVEAL_MS = 2000;
-const END_MS = 2400;
-
-type Stage = "intro" | "reveal" | "done";
+// The timing lives in globals.css; this only removes the overlay afterwards and
+// cleans the URL. If hydration never runs, CSS still reveals the page.
+const END_MS = 2500;
 
 export function Welcome({
   name,
@@ -19,33 +17,25 @@ export function Welcome({
   intro: boolean;
   children: React.ReactNode;
 }) {
-  const [stage, setStage] = useState<Stage>(intro ? "intro" : "done");
+  const [done, setDone] = useState(false);
   const router = useRouter();
+  const running = intro && !done;
 
   useEffect(() => {
     if (!intro) return;
 
-    const reveal = setTimeout(() => setStage("reveal"), REVEAL_MS);
-    const end = setTimeout(() => {
-      setStage("done");
-      // Drop the query param at the end, never on mount: cleaning it early makes
-      // the router re-render with no `welcome` and unmount this overlay at once.
+    const timer = setTimeout(() => {
+      setDone(true);
       router.replace("/");
     }, END_MS);
 
-    return () => {
-      clearTimeout(reveal);
-      clearTimeout(end);
-    };
+    return () => clearTimeout(timer);
   }, [intro, router]);
 
   return (
     <>
-      {stage === "done" ? null : (
-        <div
-          className={`welcome${stage === "reveal" ? " welcome--out" : ""}`}
-          aria-hidden="true"
-        >
+      {running ? (
+        <div className="welcome" aria-hidden="true">
           <Image
             className="welcome-logo"
             src="/logo-mark.png"
@@ -56,9 +46,9 @@ export function Welcome({
           />
           <p className="welcome-name">Aetermio saludos, {name}</p>
         </div>
-      )}
+      ) : null}
 
-      {stage === "intro" ? null : children}
+      <div className={running ? "page" : undefined}>{children}</div>
     </>
   );
 }

@@ -176,7 +176,8 @@ h2 {
   margin-top: 36px;
 }
 
-/* Login intro */
+/* Login intro. Every timing here is CSS so a failed hydration cannot trap the
+   page behind the overlay: `.page` reveals itself even if no JS ever runs. */
 .welcome {
   position: fixed;
   inset: 0;
@@ -189,11 +190,14 @@ h2 {
   padding: 24px;
   background: var(--green);
   transform-origin: top;
-  animation: welcome-wipe 500ms cubic-bezier(0.7, 0, 0.2, 1) both;
+  animation:
+    welcome-wipe 500ms cubic-bezier(0.7, 0, 0.2, 1) both,
+    welcome-out 400ms ease 2100ms forwards;
 }
 
-.welcome--out {
-  animation: welcome-out 400ms ease forwards;
+.page {
+  visibility: hidden;
+  animation: page-in 1ms linear 2500ms forwards;
 }
 
 /* The source mark fills 53% of its canvas, so the box is larger than it looks. */
@@ -241,10 +245,20 @@ h2 {
   }
 }
 
+@keyframes page-in {
+  to {
+    visibility: visible;
+  }
+}
+
 /* The animations are the only thing this overlay does, so drop it entirely. */
 @media (prefers-reduced-motion: reduce) {
   .welcome {
     display: none;
+  }
+
+  .page {
+    visibility: visible;
   }
 }
 

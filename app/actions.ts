@@ -119,12 +119,15 @@ export async function assignToMe(formData: FormData) {
   await patchTask(taskId, projectId, { assignee_id: user.id });
 }
 
-export async function saveNotes(formData: FormData) {
+export async function updateTask(formData: FormData) {
   const taskId = text(formData, "task_id");
   const projectId = text(formData, "project_id");
+  const title = text(formData, "title");
 
-  if (!taskId) return;
+  if (!taskId || !title) redirect(`/projects/${projectId}?error=1`);
+
   await patchTask(taskId, projectId, {
+    title,
     notes: text(formData, "notes") || null,
   });
 }

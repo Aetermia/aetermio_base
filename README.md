@@ -6,6 +6,19 @@ Internal board for a three-person dev group: active projects, their tasks, and w
 
 Next.js 16 (App Router) + Supabase (Postgres + Auth), deployed on Vercel.
 
+## Quick look without Supabase
+
+The UI runs against an in-memory stand-in, so you can click through it before creating a project.
+
+```bash
+printf 'AETERMIA_LOCAL_DB=1\n' > .env.local
+npm run dev
+```
+
+Log in with any email and any password. The display name is the email prefix, so `ezequiel@test.local` becomes "Ezequiel". The board starts with one project and one task per status. Everything resets when the dev server restarts.
+
+The stand-in lives in `lib/dev-db.ts`. It has no RLS, no GoTrue and no profile trigger, so it proves the UI, not the database. Delete the file and the two `AETERMIA_LOCAL_DB` branches in `lib/supabase/server.ts` and `proxy.ts` once a real project exists. Vercel never sets that variable.
+
 ## Setup
 
 ### 1. Supabase
@@ -49,3 +62,4 @@ Import the repo, add the same two environment variables, deploy.
 - `npm run dev`
 - `npm run build`
 - `npm run lint`
+- `node --test lib/dev-db.test.mjs`

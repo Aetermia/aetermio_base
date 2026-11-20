@@ -8,7 +8,7 @@ Test runner: `node --test` for pure logic; `next build` + manual click-through f
 
 S1. Every screen except login requires authentication. Supabase Auth email + password. Public signup is disabled; the three users are created by hand in the Supabase dashboard.
 
-S2. After a user logs in, the landing screen shows exactly: `Aetermio saludos, {nombre}` — where `{nombre}` is the user's display name. "Aetermio/a" is an internal joke and must be kept verbatim, including the "o".
+S2. The greeting `Aetermio saludos, {nombre}` belongs to the post-login intro, not to the landing screen: a green panel wipes down from the top to fill the viewport, the white logo appears centered, and the greeting renders below it. The landing screen headline reads exactly `Bienvenido`. "Aetermio/a" is an internal joke and must be kept verbatim.
 
 S3. The header banner shows exactly: `Saludos, {nombre}`.
 
@@ -38,6 +38,12 @@ S13. A project can be renamed and its description edited after creation, from th
 
 S14. A status or assignee change must be persisted. When the write fails, the screen must say so instead of leaving the control showing a value the database never accepted.
 
+S15. Task statuses are tabs, not side-by-side columns. Changing a status must visibly remove the task from the current tab and increase the count of its target tab, at every viewport. A stacked column layout hides the move below the fold on a phone, which reads as "it did nothing".
+
+S16. Status and assignee selects never clip their text, at any viewport width.
+
+S17. A project has links: a label the group recognizes plus a URL, listed on the project screen between the edit block and the new-task form. Only http and https targets are accepted. A link can be removed.
+
 ## Tasks
 
 - [x] T1 — Scaffold Next.js (App Router, TypeScript, no Tailwind, plain CSS). `S9` — inline. Evidence: Next 16.4.6, `next.config.ts` with cache flags off.
@@ -50,7 +56,10 @@ S14. A status or assignee change must be persisted. When the write fails, the sc
 - [x] T8 — Mobile header and login accessibility. `S10` — inline. Evidence: brand wordmark hidden below 480px, `aria-label` keeps the link named; login gets a visually hidden `h1`. `npm run build` and `npm run lint` pass. Not visually measured yet (no Supabase project).
 - [x] T9 — Local stand-in so the UI can be reviewed without a Supabase project. `S1,S4,S5,S7,S11` — inline. Evidence: `lib/dev-db.ts`, self-check `lib/dev-db.test.mjs` (6/6 pass), full HTTP click-through recorded in L12.
 - [x] T10 — Edit project name and description. `S13` — inline. Evidence: `updateProject` in `app/actions.ts`, `Editar proyecto` details block on the project screen. Clicked in the browser: renamed to "Tablero Aetermia" with a corrected description, and the home grid showed both.
-- [x] T11 — Surface write failures on task edits. `S14` — inline. Evidence: `patchTask` redirects with `?error=1` when Supabase returns an error, and the project screen renders `No se pudo guardar el cambio.`
+- [x] T12 — Post-login intro overlay and `Bienvenido` headline. `S2` — inline. Evidence: `app/welcome.tsx`, `.welcome` rules in `globals.css`, login action redirects to `/?welcome=1`. Screenshot at the end of the wipe: green fills the viewport, white mark centered at a 280px box, greeting below. After the timer the overlay unmounts and the URL is cleaned.
+- [x] T13 — Project links: `links` table, create and remove actions, list UI. `S17` — inline. Evidence: `createLink`/`deleteLink` with an http/https check, `supabase/schema.sql`, `links` in `lib/dev-db.ts` with a delete op (7/7 self-checks). Added `Deploy de pruebas` in the browser, list rendered with the real href, `Quitar` returned to the empty state.
+- [x] T14 — Status tabs replacing the four columns. `S15` — inline. Evidence: `task-board.tsx`. Changing a task from the Pendiente tab left the panel reading `Nada acá` and moved the counts 1→0 and 1→2 without scrolling.
+- [x] T15 — Full-width selects on narrow screens. `S16` — inline. Evidence: at 390px each select measured 328px with `scrollWidth` equal to `clientWidth` and labels `Completada` / `Sin asignar` unclipped.
 
 
 ## Log
@@ -86,4 +95,14 @@ L14 (user, verbatim): "Bien, falta que se pueda editar los proyectos (por si olv
 L15 (verification, browser): the status change was already working. In a real browser session, moving `Tarea pendiente` from Pendiente to Completada moved the card to the other column with no reload (Pendiente went to 0 and rendered "Nada acá", Completada to 2), and a follow-up read of the same project confirmed `data-status="done"` persisted. The failure the user feared is real but different: `patchTask` ignored the Supabase error and the select is uncontrolled, so a rejected write would leave the control showing a value the database rejected. T11 closes that.
 
 L16 (gotcha): changing the status requires hydration. A select fired before React attaches its `onChange` does nothing and the page keeps the old value, which looks exactly like a broken write. Uncontrolled selects were left as they are for server-action forms; making them controlled would reset the value before `requestSubmit` serializes it.
+
+L17 (user, verbatim): "Bien, ahora quiero dos cosas: Primero, una vez que haces el login y está correcto tiene que hacer un fundido que venga desde arriba del color verde que llene la pagina, de ahi que aparezca en el medio el logo (en blanco para que haga contraste) y debajo del logo diga \"Aetermiosaludos, X\" siendo X el nombre del que entra. Ya una vez dentro en donde ponia lo de \"Aetermiosaludos...\" ponga solo bienvenido. Tambien me gustaria que en los proyectos haya una zona entre el editar y la nueva tarea haya una zona de \"Enlaces\" ... Lo que decia de las tareas es que al cambiar cualquiera de las opciones \"Completado, en progres, etc.\" no lo cambia de solapa. Y fijate que no se ve bien del todo, tipo \"Completado\" se corta y \"En progreso\" tambien"
+
+L18 (diagnosis): the status change did persist, but the board stacked its four columns vertically below 600px, so the card moved out of the viewport instead of visibly moving. That is why it read as "no cambia de solapa". T14 replaced the columns with tabs; the counts change in place and the card leaves the visible panel.
+
+L19 (gotcha, intro): `window.history.replaceState` on mount is the wrong way to clean `?welcome=1`. Next patches history, re-renders the route without the param, and the overlay unmounts in the same frame, so it never appears. The cleanup now runs through `router.replace("/")` when the timer ends.
+
+L20 (copy): the request wrote `Aetermiosaludos` with no space. Kept `Aetermio saludos, {nombre}`, matching S2 and L3, where the joke is "Aetermio saludos" as a greeting.
+
+L21 (limit): the intro motion was verified by freezing the finished frame in the browser, not frame by frame. The wipe and fade timings are deterministic CSS keyframes and were not captured mid-flight. Under `prefers-reduced-motion: reduce` the overlay is hidden entirely, so it cannot get stuck without its animation.
 

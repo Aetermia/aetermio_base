@@ -27,12 +27,22 @@ create table public.tasks (
   updated_at timestamptz not null default now()
 );
 
+create table public.links (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references public.projects (id) on delete cascade,
+  label text not null,
+  url text not null,
+  created_at timestamptz not null default now()
+);
+
 create index tasks_project_id_idx on public.tasks (project_id);
+create index links_project_id_idx on public.links (project_id);
 
 -- Every logged-in user is a superadmin: one policy per table, no roles.
 alter table public.profiles enable row level security;
 alter table public.projects enable row level security;
 alter table public.tasks enable row level security;
+alter table public.links enable row level security;
 
 create policy "authenticated full access" on public.profiles
   for all to authenticated using (true) with check (true);
@@ -41,6 +51,9 @@ create policy "authenticated full access" on public.projects
   for all to authenticated using (true) with check (true);
 
 create policy "authenticated full access" on public.tasks
+  for all to authenticated using (true) with check (true);
+
+create policy "authenticated full access" on public.links
   for all to authenticated using (true) with check (true);
 
 -- Users are created by hand in the dashboard, so the profile row follows them.

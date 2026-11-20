@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { createProject } from "@/app/actions";
 import { SubmitButton } from "@/app/submit-button";
+import { Welcome } from "@/app/welcome";
 import { createClient } from "@/lib/supabase/server";
 import type { Project } from "@/lib/types";
 
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; welcome?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, welcome } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -45,7 +46,8 @@ export default async function HomePage({
 
   return (
     <main className="wrap">
-      <h1>Aetermio saludos, {name}</h1>
+      {welcome ? <Welcome name={name} /> : null}
+      <h1>Bienvenido</h1>
       <p className="lede">Estos son los proyectos activos del grupo.</p>
 
       <section>

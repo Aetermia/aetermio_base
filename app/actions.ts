@@ -17,7 +17,7 @@ export async function login(formData: FormData) {
   });
 
   if (error) redirect("/login?error=1");
-  redirect("/");
+  redirect("/?welcome=1");
 }
 
 export async function logout() {
@@ -132,4 +132,43 @@ export async function saveNotes(formData: FormData) {
   await patchTask(taskId, projectId, {
     notes: text(formData, "notes") || null,
   });
+}
+
+function isHttpUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+export async function createLink(formData: FormData) {
+  const projectId = text(formData, "project_id");
+  const label = text(formData, "label");
+  const url = text(formData, "url");
+  const back = `/projects/${projectId}`;
+
+  if (!projectId || !label || !isHttpUrl(url)) redirect(`${back}?error=1`);
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("links")
+    .insert({ project_id: projectId, label, url });
+
+  if (error) redirect(`${back}?error=1`);
+  revalidatePath(back);
+}
+
+export async function deleteLink(formData: FormData) {
+  const linkId = text(formData, "link_id");
+  const projectId = text(formData, "project_id");
+
+  if (!linkId) return;
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("links").delete().eq("id", linkId);
+
+  if (error) redirect(`/projects/${projectId}?error=1`);
+  revalidatePath(`/projects/${projectId}`);
 }

@@ -3,7 +3,7 @@
 // Enabled with AETERMIA_LOCAL_DB=1. Vercel never sets it, so prod stays real.
 
 type Row = Record<string, unknown>;
-type Table = "profiles" | "projects" | "tasks";
+type Table = "profiles" | "projects" | "tasks" | "links";
 
 export type CookieIO = {
   get: (
@@ -58,6 +58,7 @@ function store(): Record<Table, Row[]> {
 
     globals.__aetermiaDb = {
       profiles: [],
+      links: [],
       projects: [
         {
           id: projectId,
@@ -79,7 +80,7 @@ function store(): Record<Table, Row[]> {
   return globals.__aetermiaDb;
 }
 
-type Op = "select" | "insert" | "update";
+type Op = "select" | "insert" | "update" | "delete";
 
 function builder(table: Table, op: Op, payload: Row = {}) {
   const filters: ((row: Row) => boolean)[] = [];
@@ -110,6 +111,13 @@ function builder(table: Table, op: Op, payload: Row = {}) {
       const hit = rows.filter((row) => filters.every((filter) => filter(row)));
       for (const row of hit) Object.assign(row, payload);
       return { data: hit, error: null };
+    }
+
+    if (op === "delete") {
+      for (let index = rows.length - 1; index >= 0; index--) {
+        if (filters.every((filter) => filter(rows[index]))) rows.splice(index, 1);
+      }
+      return { data: null, error: null };
     }
 
     let out = rows.filter((row) => filters.every((filter) => filter(row)));
@@ -212,6 +220,7 @@ export function createLocalClient(cookies: CookieIO) {
         select: () => builder(table, "select"),
         insert: (values: Row) => builder(table, "insert", values),
         update: (values: Row) => builder(table, "update", values),
+        delete: () => builder(table, "delete"),
       };
     },
   };

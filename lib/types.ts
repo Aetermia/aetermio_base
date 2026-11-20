@@ -33,3 +33,9 @@ export type Task = {
   status: TaskStatus;
   assignee_id: string | null;
 };
+
+export type ProjectLink = {
+  id: string;
+  label: string;
+  url: string;
+};

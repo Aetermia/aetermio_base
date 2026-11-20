@@ -21,7 +21,7 @@ export async function Header() {
 
   return (
     <header className="bar">
-      <Link className="brand" href="/">
+      <Link className="brand" href="/" aria-label="Aetermia">
         <Image src="/logo-mark.png" alt="" width={30} height={30} priority />
         <span>AETERMIA</span>
       </Link>

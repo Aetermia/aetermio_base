@@ -15,11 +15,13 @@ export default async function LoginPage({
         <Image
           className="login-logo"
           src="/logo.jpg"
-          alt="Aetermia"
+          alt=""
           width={640}
           height={640}
           priority
         />
+
+        <h1 className="sr-only">Entrar a Aetermia</h1>
 
         <form action={login} className="stack">
           <label>

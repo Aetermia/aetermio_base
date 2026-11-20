@@ -43,6 +43,7 @@ S12. Target hosting: Vercel (app) + Supabase (database and auth). No other servi
 - [x] T5 — Task board per project: status columns, create, edit status, assign, self-assign, notes. `S5,S6,S7,S11` — inline. Evidence: `app/projects/[id]/page.tsx`, `task-card.tsx`.
 - [x] T6 — Brand layer: palette, header banner, logos, favicon. `S3,S9,S10` — inline. Evidence: `public/logo-mark.png` keyed from the supplied JPEG, `app/icon.png`, `app/globals.css`.
 - [x] T7 — Build, typecheck, lint, click-through, README with the two manual Supabase steps. `S12` — inline. Evidence: `npm run build` OK, `npm run lint` OK, HTTP smoke test OK. Authenticated screens still need a real Supabase project.
+- [x] T8 — Mobile header and login accessibility. `S10` — inline. Evidence: brand wordmark hidden below 480px, `aria-label` keeps the link named; login gets a visually hidden `h1`. `npm run build` and `npm run lint` pass. Not visually measured yet (no Supabase project).
 
 
 ## Log
@@ -64,4 +65,8 @@ L7 (decision): Status and assignee selects submit on change through a small clie
 L8 (verification): `npm run build` passes (TypeScript included), `npm run lint` passes, and an HTTP smoke test against the production server returned `GET /login` 200 with the form, `GET /` 307 (auth guard), `GET /icon.png` 200. Authenticated screens were not click-tested: they need a real Supabase project and the three users.
 
 L9 (pending, user): create the Supabase project, run `supabase/schema.sql`, disable signup, create the three users, and put the URL and anon key in `.env.local`.
+
+L10 (verification, resume): the repo already contains every task from prompts L1 and L2, committed in `4709a1b`. Brand green sampled from `logo sin nombre y verde.jpg` is exactly `rgb(45,92,76)` = `#2D5C4C`, matching S9. Two defects fixed in T8: the header had no breakpoint (the greeting wrapped onto two lines around 360px) and the login page had no heading.
+
+L11 (blocker): without `.env.local` every route throws, because `createClient` receives undefined credentials. `docker` is not installed, so no local Supabase either. The only unverified part of the feature is the authenticated click-through. That needs a real Supabase project.
 

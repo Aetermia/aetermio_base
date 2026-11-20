@@ -56,6 +56,25 @@ create policy "authenticated full access" on public.tasks
 create policy "authenticated full access" on public.links
   for all to authenticated using (true) with check (true);
 
+-- The Lugares sheet. One row per cell that was ever touched, so the grid has
+-- no fixed size: its shape comes from the highest stored index.
+create table if not exists public.place_cells (
+  row_index int not null check (row_index >= 0),
+  col_index int not null check (col_index >= 0),
+  value text not null default '',
+  font_family text,
+  font_size int,
+  color text,
+  background text,
+  updated_at timestamptz not null default now(),
+  primary key (row_index, col_index)
+);
+
+alter table public.place_cells enable row level security;
+
+create policy "authenticated full access" on public.place_cells
+  for all to authenticated using (true) with check (true);
+
 -- Users are created by hand in the dashboard, so the profile row follows them.
 create function public.handle_new_user()
 returns trigger

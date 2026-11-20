@@ -50,6 +50,10 @@ S19. A task's title and note are editable from the card through an `Editar` bloc
 
 S20. The intro must dismiss even if no JavaScript ever runs. Its timings are CSS animations, and the page reveals itself from a CSS rule, so a failed or slow hydration cannot leave the app green forever.
 
+S21. The banner carries two tabs, `Proyectos` and `Lugares`, and the current one is marked. Both stay reachable from every screen, including a phone, where the tabs move to a second row of the banner instead of shrinking.
+
+S22. `Lugares` is a spreadsheet: labelled columns, numbered rows, one cell per input. A cell holds a value plus a font, a size, a text colour and a background colour, and it saves when the cell is left. Cells outside the stored range are empty; the grid can be grown with `Agregar fila` and `Agregar columna`.
+
 ## Tasks
 
 - [x] T1 — Scaffold Next.js (App Router, TypeScript, no Tailwind, plain CSS). `S9` — inline. Evidence: Next 16.4.6, `next.config.ts` with cache flags off.
@@ -69,6 +73,8 @@ S20. The intro must dismiss even if no JavaScript ever runs. Its timings are CSS
 - [x] T16 — Explicit `Guardar` in the task card, replacing the `onChange` auto-submit. `S18` — inline. Evidence: select changed to Completada without saving left the columns untouched; pressing `Guardar` moved the card (Pendiente 1→0, Completada 1→2). Same for the assignee: `Ezequiel` persisted and the control showed it without a reload.
 - [x] T17 — Edit a task's title and note from the card. `S19` — inline. Evidence: `updateTask` replaces `saveNotes`; the `Editar` block swapped the separate note editor. Renamed `Tarea pendiente` to `Tarea renombrada` in the browser and the column re-rendered with the new title.
 - [x] T18 — Intro dismissal moved to CSS. `S20` — inline. Evidence: with `.welcome` and `.page` injected into a live page and no React involved, the page computed `visibility: hidden` at t=0 and `visible` at t=2600 while the overlay went to `hidden`. Full login run: overlay visible and page hidden at the start, overlay out of the DOM, page visible, URL cleaned.
+- [x] T19 — Banner tabs with the active section marked. `S21` — inline. Evidence: `nav-tabs.tsx` reads the pathname; `Proyectos*` on `/` with `h1` Bienvenido, `Lugares*` on `/lugares`. At 390px the banner measured 112px tall with the two tabs on a second row, 178x44 each, no page overflow.
+- [x] T20 — The `Lugares` sheet. `S22` — inline. Evidence: `place_cells` in `supabase/schema.sql` with `(row_index, col_index)` as primary key, `saveCell` upserting on that pair, 8/8 self-checks including the upsert. Typed into A4, set Georgia 20, red text and a green background, reloaded, and the cell came back with all four. `Agregar fila` and `Agregar columna` grew the grid 12x6 to 13x7.
 
 
 ## Log
@@ -128,4 +134,14 @@ L26 (user, verbatim): "Bien, falta que las tareas tengan un botón de editar e I
 L27 (intro): could not reproduce a stuck overlay. A sampling run installed before the login click recorded the real timeline: `/?welcome=1` with the overlay visible and the page hidden, page visible at +2050ms, overlay gone at +2350ms, URL cleaned right after. But that dismissal depended on React hydration and on `router.replace`, so a failed hydration or a stale dev bundle would leave the green screen forever with no way out. The timing now lives in CSS: `.welcome` fades itself to `visibility: hidden` at 2500ms and `.page` reveals itself at 2500ms through `page-in`. The JS only removes the overlay and cleans the URL. Verified with `.welcome` and `.page` injected outside React: hidden at t=0, visible at t=2600.
 
 L28 (reduced motion): the global `animation: none !important` would have left `.page` hidden forever, since its only reveal is an animation. The reduced-motion block sets `.page { visibility: visible }` and hides the overlay, so that path also cannot strand the page.
+
+L29 (user, verbatim): "Bien, ahora quiero añadir un ultimo detalle. Que arriba en el banner haya dos solapas tipo pestaña, una sea esta de \"Proyectos\" y otra de \"Lugares\", al entrar tiene que mostrar una planilla estilo Excel, la idea seria que la editiemos (Edición sencilla, tipos de letra, tamaño y color de letra y fondo) y ahi pongamos lo que son los locales que fuimos, donde estan, si mandamos folletos y asi"
+
+L30 (sheet storage): one row per touched cell, keyed on `(row_index, col_index)`. The grid has no stored size: its height and width come from the highest stored indexes, so `Agregar fila` is view state only and the first write to a new row is what persists it. A cell that was never touched has no row at all, which is why an empty grid costs nothing.
+
+L31 (colours): the first version only wrote on blur, and a colour picker does not reliably blur when its native dialog closes. Changing a colour and reloading lost it. Colours now write 500ms after the last pick, and still on blur. Verified: red text and a green background survived a reload.
+
+L32 (provenance): font, size and colours arrive from the browser and end up in inline CSS, so they are allowlisted in `saveCell` instead of trusted: fonts must be one of `SHEET_FONTS`, sizes one of `SHEET_SIZES`, colours a `#rrggbb` string.
+
+L33 (stand-in child defaults): the local stand-in used to spray `id`, `status`, `notes`, `archived` and friends into every insert, so an insert the real schema would reject looked fine locally. Defaults are now per table, and `place_cells` has none: it has no `id` column at all.
 

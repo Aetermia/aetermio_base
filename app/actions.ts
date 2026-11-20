@@ -3,7 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { STATUS_ORDER, type TaskStatus } from "@/lib/types";
+import {
+  CELL_MAX,
+  SHEET_FONTS,
+  SHEET_SIZES,
+  STATUS_ORDER,
+  type CellInput,
+  type TaskStatus,
+} from "@/lib/types";
 
 function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -169,4 +176,39 @@ export async function deleteLink(formData: FormData) {
 
   if (error) redirect(`/projects/${projectId}?error=1`);
   revalidatePath(`/projects/${projectId}`);
+}
+
+function hexColor(value: string | null) {
+  return value && /^#[0-9a-f]{6}$/i.test(value) ? value : null;
+}
+
+// Called on every cell blur, so it deliberately does not revalidate: a refresh
+// per keystroke would churn the router for data the client already has.
+export async function saveCell(input: CellInput) {
+  const row = Math.trunc(Number(input.row));
+  const col = Math.trunc(Number(input.col));
+
+  if (!(row >= 0 && row < 500) || !(col >= 0 && col < 60)) {
+    return { ok: false };
+  }
+
+  const size = Number(input.font_size);
+  const font = String(input.font_family ?? "");
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("place_cells").upsert(
+    {
+      row_index: row,
+      col_index: col,
+      value: String(input.value ?? "").slice(0, CELL_MAX),
+      font_family: SHEET_FONTS.some((item) => item.value === font) && font ? font : null,
+      font_size: SHEET_SIZES.includes(size) ? size : null,
+      color: hexColor(input.color),
+      background: hexColor(input.background),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "row_index,col_index" },
+  );
+
+  return { ok: !error };
 }

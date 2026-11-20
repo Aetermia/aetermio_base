@@ -39,3 +39,38 @@ export type ProjectLink = {
   label: string;
   url: string;
 };
+
+export type PlaceCell = {
+  row_index: number;
+  col_index: number;
+  value: string;
+  font_family: string | null;
+  font_size: number | null;
+  color: string | null;
+  background: string | null;
+};
+
+export type CellInput = {
+  row: number;
+  col: number;
+  value: string;
+  font_family: string | null;
+  font_size: number | null;
+  color: string | null;
+  background: string | null;
+};
+
+// An allowlist, not a free text field: these land in inline CSS after coming
+// back from the browser.
+export const SHEET_FONTS = [
+  { value: "", label: "Predeterminada" },
+  { value: "Manrope", label: "Sans" },
+  { value: "Georgia", label: "Con serifa" },
+  { value: "Courier New", label: "Monoespaciada" },
+  { value: "Arial", label: "Arial" },
+];
+
+export const SHEET_SIZES = [12, 14, 16, 20, 24];
+export const SHEET_ROWS = 12;
+export const SHEET_COLS = 6;
+export const CELL_MAX = 200;

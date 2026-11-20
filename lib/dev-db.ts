@@ -3,7 +3,7 @@
 // Enabled with AETERMIA_LOCAL_DB=1. Vercel never sets it, so prod stays real.
 
 type Row = Record<string, unknown>;
-type Table = "profiles" | "projects" | "tasks" | "links";
+type Table = "profiles" | "projects" | "tasks" | "links" | "place_cells";
 
 export type CookieIO = {
   get: (
@@ -55,6 +55,16 @@ function store(): Record<Table, Row[]> {
       created_at: now,
       updated_at: now,
     });
+    const cell = (col: number, value: string, background: string | null = null) => ({
+      row_index: 0,
+      col_index: col,
+      value,
+      font_family: null,
+      font_size: 14,
+      color: null,
+      background,
+      updated_at: now,
+    });
 
     globals.__aetermiaDb = {
       profiles: [],
@@ -74,15 +84,44 @@ function store(): Record<Table, Row[]> {
         task("Tarea completada", "done"),
         task("Tarea anulada", "cancelled"),
       ],
+      place_cells: [
+        cell(0, "Local", "#eceee8"),
+        cell(1, "Dónde está", "#eceee8"),
+        cell(2, "Folletos", "#eceee8"),
+        cell(3, "Anotado", "#eceee8"),
+        { ...cell(0, "Panadería La Esquina"), row_index: 1 },
+        { ...cell(1, "Rivadavia 1234"), row_index: 1 },
+        { ...cell(2, "Sí, 50"), row_index: 1 },
+        { ...cell(3, "Volver en marzo"), row_index: 1 },
+      ],
     };
   }
 
   return globals.__aetermiaDb;
 }
 
-type Op = "select" | "insert" | "update" | "delete";
+// Only the columns each table really has. The stand-in used to spray every
+// column over every table, which hid inserts the real schema would reject.
+function defaultsFor(table: Table): Row {
+  if (table === "place_cells") return {};
 
-function builder(table: Table, op: Op, payload: Row = {}) {
+  const now = new Date().toISOString();
+  const base = { id: crypto.randomUUID(), created_at: now };
+
+  if (table === "projects") {
+    return { ...base, archived: false, description: null };
+  }
+
+  if (table === "tasks") {
+    return { ...base, updated_at: now, status: "todo", assignee_id: null, notes: null };
+  }
+
+  return base;
+}
+
+type Op = "select" | "insert" | "update" | "delete" | "upsert";
+
+function builder(table: Table, op: Op, payload: Row = {}, conflict = "id") {
   const filters: ((row: Row) => boolean)[] = [];
   let orderBy: string | null = null;
   let ascending = true;
@@ -91,18 +130,19 @@ function builder(table: Table, op: Op, payload: Row = {}) {
   function exec() {
     const rows = store()[table];
 
-    if (op === "insert") {
-      const row: Row = {
-        id: crypto.randomUUID(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        archived: false,
-        status: "todo",
-        assignee_id: null,
-        notes: null,
-        description: null,
-        ...payload,
-      };
+    if (op === "upsert") {
+      const keys = conflict.split(",").map((key) => key.trim());
+      const hit = rows.find((row) =>
+        keys.every((key) => row[key] === payload[key]),
+      );
+      if (hit) {
+        Object.assign(hit, payload);
+        return { data: hit, error: null };
+      }
+    }
+
+    if (op === "insert" || op === "upsert") {
+      const row: Row = { ...defaultsFor(table), ...payload };
       rows.push(row);
       return { data: row, error: null };
     }
@@ -219,6 +259,8 @@ export function createLocalClient(cookies: CookieIO) {
       return {
         select: () => builder(table, "select"),
         insert: (values: Row) => builder(table, "insert", values),
+        upsert: (values: Row, options?: { onConflict?: string }) =>
+          builder(table, "upsert", values, options?.onConflict),
         update: (values: Row) => builder(table, "update", values),
         delete: () => builder(table, "delete"),
       };

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { logout } from "@/app/actions";
+import { NavTabs } from "@/app/nav-tabs";
 import { createClient } from "@/lib/supabase/server";
 
 export async function Header() {
@@ -25,6 +26,8 @@ export async function Header() {
         <Image src="/logo-mark.png" alt="" width={30} height={30} priority />
         <span>AETERMIA</span>
       </Link>
+
+      <NavTabs />
 
       <div className="bar-right">
         <span className="greeting">Saludos, {name}</span>

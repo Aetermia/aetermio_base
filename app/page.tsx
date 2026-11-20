@@ -45,57 +45,58 @@ export default async function HomePage({
   }
 
   return (
-    <main className="wrap">
-      {welcome ? <Welcome name={name} /> : null}
-      <h1>Bienvenido</h1>
-      <p className="lede">Estos son los proyectos activos del grupo.</p>
+    <Welcome name={name} intro={welcome === "1"}>
+      <main className="wrap">
+        <h1>Bienvenido</h1>
+        <p className="lede">Estos son los proyectos activos del grupo.</p>
 
-      <section>
-        {projects && projects.length > 0 ? (
-          <div className="grid">
-            {(projects as Project[]).map((project) => (
-              <Link
-                className="project"
-                key={project.id}
-                href={`/projects/${project.id}`}
-              >
-                <strong>{project.name}</strong>
-                {project.description ? <p>{project.description}</p> : null}
-                <span className="meta">
-                  {openByProject.get(project.id) ?? 0} abiertas
-                </span>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <p className="empty">
-            Todavía no hay proyectos. Creá el primero abajo.
-          </p>
-        )}
-      </section>
-
-      <section className="section">
-        <h2>Nuevo proyecto</h2>
-        <div className="panel">
-          {error ? (
-            <p className="error">No se pudo crear el proyecto.</p>
-          ) : null}
-
-          <form action={createProject} className="stack">
-            <div className="two">
-              <label>
-                Nombre
-                <input name="name" required maxLength={80} />
-              </label>
-              <label>
-                Descripción (opcional)
-                <input name="description" maxLength={200} />
-              </label>
+        <section>
+          {projects && projects.length > 0 ? (
+            <div className="grid">
+              {(projects as Project[]).map((project) => (
+                <Link
+                  className="project"
+                  key={project.id}
+                  href={`/projects/${project.id}`}
+                >
+                  <strong>{project.name}</strong>
+                  {project.description ? <p>{project.description}</p> : null}
+                  <span className="meta">
+                    {openByProject.get(project.id) ?? 0} abiertas
+                  </span>
+                </Link>
+              ))}
             </div>
-            <SubmitButton className="btn">Crear proyecto</SubmitButton>
-          </form>
-        </div>
-      </section>
-    </main>
+          ) : (
+            <p className="empty">
+              Todavía no hay proyectos. Creá el primero abajo.
+            </p>
+          )}
+        </section>
+
+        <section className="section">
+          <h2>Nuevo proyecto</h2>
+          <div className="panel">
+            {error ? (
+              <p className="error">No se pudo crear el proyecto.</p>
+            ) : null}
+
+            <form action={createProject} className="stack">
+              <div className="two">
+                <label>
+                  Nombre
+                  <input name="name" required maxLength={80} />
+                </label>
+                <label>
+                  Descripción (opcional)
+                  <input name="description" maxLength={200} />
+                </label>
+              </div>
+              <SubmitButton className="btn">Crear proyecto</SubmitButton>
+            </form>
+          </div>
+        </section>
+      </main>
+    </Welcome>
   );
 }

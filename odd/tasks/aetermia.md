@@ -38,11 +38,13 @@ S13. A project can be renamed and its description edited after creation, from th
 
 S14. A status or assignee change must be persisted. When the write fails, the screen must say so instead of leaving the control showing a value the database never accepted.
 
-S15. Task statuses are tabs, not side-by-side columns. Changing a status must visibly remove the task from the current tab and increase the count of its target tab, at every viewport. A stacked column layout hides the move below the fold on a phone, which reads as "it did nothing".
+S15. Task statuses live in the four-column board, side by side and visible at once; the columns scroll horizontally on a narrow screen instead of stacking, because a stacked layout hid the moved card below the fold and read as "it did nothing".
 
-S16. Status and assignee selects never clip their text, at any viewport width.
+S16. Status and assignee selects never clip their text. A board column is about 230px wide, so the two selects stack inside the card.
 
 S17. A project has links: a label the group recognizes plus a URL, listed on the project screen between the edit block and the new-task form. Only http and https targets are accepted. A link can be removed.
+
+S18. A status or assignee change is applied by an explicit `Guardar` button inside the task card, not on select change. After it saves, the control shows the stored value without a reload: an uncontrolled select keeps whatever the user last picked, so it must be keyed on the stored value.
 
 ## Tasks
 
@@ -56,10 +58,11 @@ S17. A project has links: a label the group recognizes plus a URL, listed on the
 - [x] T8 — Mobile header and login accessibility. `S10` — inline. Evidence: brand wordmark hidden below 480px, `aria-label` keeps the link named; login gets a visually hidden `h1`. `npm run build` and `npm run lint` pass. Not visually measured yet (no Supabase project).
 - [x] T9 — Local stand-in so the UI can be reviewed without a Supabase project. `S1,S4,S5,S7,S11` — inline. Evidence: `lib/dev-db.ts`, self-check `lib/dev-db.test.mjs` (6/6 pass), full HTTP click-through recorded in L12.
 - [x] T10 — Edit project name and description. `S13` — inline. Evidence: `updateProject` in `app/actions.ts`, `Editar proyecto` details block on the project screen. Clicked in the browser: renamed to "Tablero Aetermia" with a corrected description, and the home grid showed both.
-- [x] T12 — Post-login intro overlay and `Bienvenido` headline. `S2` — inline. Evidence: `app/welcome.tsx`, `.welcome` rules in `globals.css`, login action redirects to `/?welcome=1`. Screenshot at the end of the wipe: green fills the viewport, white mark centered at a 280px box, greeting below. After the timer the overlay unmounts and the URL is cleaned.
+- [x] T12 — Post-login intro overlay and `Bienvenido` headline. `S2` — inline. Evidence: `app/welcome.tsx`, login redirects to `/?welcome=1`. The overlay renders the page as children and mounts them only at the reveal, so nothing of the app is visible during the fade: sampled in the browser at 150ms intervals, `overlay: true, page: false` for the whole intro, then the page appears. Screenshot of the green frame with the white mark and the greeting.
 - [x] T13 — Project links: `links` table, create and remove actions, list UI. `S17` — inline. Evidence: `createLink`/`deleteLink` with an http/https check, `supabase/schema.sql`, `links` in `lib/dev-db.ts` with a delete op (7/7 self-checks). Added `Deploy de pruebas` in the browser, list rendered with the real href, `Quitar` returned to the empty state.
-- [x] T14 — Status tabs replacing the four columns. `S15` — inline. Evidence: `task-board.tsx`. Changing a task from the Pendiente tab left the panel reading `Nada acá` and moved the counts 1→0 and 1→2 without scrolling.
-- [x] T15 — Full-width selects on narrow screens. `S16` — inline. Evidence: at 390px each select measured 328px with `scrollWidth` equal to `clientWidth` and labels `Completada` / `Sin asignar` unclipped.
+- [x] T14 — Four-column board restored, horizontally scrollable under 760px. `S15` — inline. Evidence: at 390px the board measured 350px wide with 962px of scroll width; at 1280px the four columns show at once.
+- [x] T15 — Selects stacked inside the card so labels never clip. `S16` — inline. Evidence: 0 of 8 selects report `scrollWidth > clientWidth` at 390px, and the desktop board shows `Completada`, `En progreso`, `Sin asignar` in full.
+- [x] T16 — Explicit `Guardar` in the task card, replacing the `onChange` auto-submit. `S18` — inline. Evidence: select changed to Completada without saving left the columns untouched; pressing `Guardar` moved the card (Pendiente 1→0, Completada 1→2). Same for the assignee: `Ezequiel` persisted and the control showed it without a reload.
 
 
 ## Log
@@ -105,4 +108,12 @@ L19 (gotcha, intro): `window.history.replaceState` on mount is the wrong way to 
 L20 (copy): the request wrote `Aetermiosaludos` with no space. Kept `Aetermio saludos, {nombre}`, matching S2 and L3, where the joke is "Aetermio saludos" as a greeting.
 
 L21 (limit): the intro motion was verified by freezing the finished frame in the browser, not frame by frame. The wipe and fade timings are deterministic CSS keyframes and were not captured mid-flight. Under `prefers-reduced-motion: reduce` the overlay is hidden entirely, so it cannot get stuck without its animation.
+
+L22 (user, verbatim): "Bien, que salga el fundido primero y RECIEN ahi se vea la pagina. Sigue sin funcionar lo de las tareas, lo que te digo es que no cambia cuando le doy otro estado. Y me gustaba es tablero que habias armado antes que salian las tareas al lado e iban poniendose segun dond van. Hagamos asi para los estados de las tareas, que cuando lo cambio tenga que \"guardar\" en la misma tarea asi se ejecuta el cambio"
+
+L23 (root cause of "no cambia"): the write was fine, the control was lying. `TaskCard` is a client component and both selects were uncontrolled with `defaultValue`, so React never re-applied the stored value after a save. The status looked right only because a changed status moves the card to another column, which remounts it; the assignee kept showing `Sin asignar` until a full reload. Proven in the browser: after `Asignarme` the select still read `Sin asignar`, and a page reload showed `Ezequiel`. Fixed with `key` on both selects, keyed on the stored value.
+
+L24 (decision): the auto-submit on `select` change is gone. Saving is an explicit `Guardar` inside the card, which also removes the hydration race that made a change silently do nothing right after load. One form now saves status and assignee together; `Asignarme` remains a one-click shortcut.
+
+L25 (tabs rolled back): T14 shipped status tabs and the user asked for the board back. The board is restored. The original "no cambia" was the stale control, not the layout, so the reason I wrote for the tabs (L18) was incomplete.
 

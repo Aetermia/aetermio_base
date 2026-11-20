@@ -4,11 +4,13 @@ import { createLink, createTask, deleteLink, updateProject } from "@/app/actions
 import { SubmitButton } from "@/app/submit-button";
 import { createClient } from "@/lib/supabase/server";
 import {
+  STATUS_LABELS,
+  STATUS_ORDER,
   type Profile,
   type ProjectLink,
   type Task,
 } from "@/lib/types";
-import { TaskBoard } from "./task-board";
+import { TaskCard } from "./task-card";
 
 export default async function ProjectPage({
   params,
@@ -159,7 +161,34 @@ export default async function ProjectPage({
       </section>
 
       <section className="section">
-        <TaskBoard tasks={list} projectId={project.id} people={team} />
+        <div className="board">
+          {STATUS_ORDER.map((status) => {
+            const items = list.filter((task) => task.status === status);
+
+            return (
+              <div className="col" key={status}>
+                <div className="col-head">
+                  <span className={`dot ${status}`} aria-hidden="true" />
+                  <h3>{STATUS_LABELS[status]}</h3>
+                  <span className="count">{items.length}</span>
+                </div>
+
+                {items.length === 0 ? (
+                  <p className="col-empty">Nada acá.</p>
+                ) : (
+                  items.map((task) => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      projectId={project.id}
+                      people={team}
+                    />
+                  ))
+                )}
+              </div>
+            );
+          })}
+        </div>
       </section>
     </main>
   );

@@ -1,21 +1,12 @@
 "use client";
 
-import {
-  assignToMe,
-  saveNotes,
-  setTaskAssignee,
-  setTaskStatus,
-} from "@/app/actions";
+import { assignToMe, saveNotes, saveTask } from "@/app/actions";
 import {
   STATUS_LABELS,
   STATUS_ORDER,
   type Profile,
   type Task,
 } from "@/lib/types";
-
-function submitOnChange(event: React.ChangeEvent<HTMLSelectElement>) {
-  event.currentTarget.form?.requestSubmit();
-}
 
 export function TaskCard({
   task,
@@ -33,14 +24,18 @@ export function TaskCard({
         {task.notes ? <span className="chip">nota</span> : null}
       </div>
 
-      <div className="row">
-        <form action={setTaskStatus} className="grow">
-          <input type="hidden" name="task_id" value={task.id} />
-          <input type="hidden" name="project_id" value={projectId} />
+      <form action={saveTask} className="stack">
+        <input type="hidden" name="task_id" value={task.id} />
+        <input type="hidden" name="project_id" value={projectId} />
+
+        <div className="row">
+          {/* Keyed on the saved value: an uncontrolled select keeps whatever it had,
+              so without this the control lies until a full reload. */}
           <select
+            key={`status-${task.status}`}
+            className="grow"
             name="status"
             defaultValue={task.status}
-            onChange={submitOnChange}
             aria-label="Estado"
           >
             {STATUS_ORDER.map((status) => (
@@ -49,15 +44,12 @@ export function TaskCard({
               </option>
             ))}
           </select>
-        </form>
 
-        <form action={setTaskAssignee} className="grow">
-          <input type="hidden" name="task_id" value={task.id} />
-          <input type="hidden" name="project_id" value={projectId} />
           <select
+            key={`assignee-${task.assignee_id ?? "none"}`}
+            className="grow"
             name="assignee_id"
             defaultValue={task.assignee_id ?? ""}
-            onChange={submitOnChange}
             aria-label="Asignado a"
           >
             <option value="">Sin asignar</option>
@@ -67,8 +59,12 @@ export function TaskCard({
               </option>
             ))}
           </select>
-        </form>
-      </div>
+        </div>
+
+        <button className="save" type="submit">
+          Guardar
+        </button>
+      </form>
 
       <div className="row">
         <form action={assignToMe}>

@@ -4,39 +4,61 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-const INTRO_MS = 2600;
+// The page mounts when the overlay starts fading, so the reveal is a crossfade.
+const REVEAL_MS = 2000;
+const END_MS = 2400;
 
-export function Welcome({ name }: { name: string }) {
-  const [done, setDone] = useState(false);
+type Stage = "intro" | "reveal" | "done";
+
+export function Welcome({
+  name,
+  intro,
+  children,
+}: {
+  name: string;
+  intro: boolean;
+  children: React.ReactNode;
+}) {
+  const [stage, setStage] = useState<Stage>(intro ? "intro" : "done");
   const router = useRouter();
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDone(true);
+    if (!intro) return;
+
+    const reveal = setTimeout(() => setStage("reveal"), REVEAL_MS);
+    const end = setTimeout(() => {
+      setStage("done");
       // Drop the query param at the end, never on mount: cleaning it early makes
       // the router re-render with no `welcome` and unmount this overlay at once.
       router.replace("/");
-    }, INTRO_MS);
+    }, END_MS);
 
-    return () => clearTimeout(timer);
-  }, [router]);
-
-  if (done) return null;
+    return () => {
+      clearTimeout(reveal);
+      clearTimeout(end);
+    };
+  }, [intro, router]);
 
   return (
-    <div className="welcome" aria-hidden="true">
-      <div className="welcome-wipe" />
-      <div className="welcome-body">
-        <Image
-          className="welcome-logo"
-          src="/logo-mark.png"
-          alt=""
-          width={280}
-          height={280}
-          priority
-        />
-        <p className="welcome-name">Aetermio saludos, {name}</p>
-      </div>
-    </div>
+    <>
+      {stage === "done" ? null : (
+        <div
+          className={`welcome${stage === "reveal" ? " welcome--out" : ""}`}
+          aria-hidden="true"
+        >
+          <Image
+            className="welcome-logo"
+            src="/logo-mark.png"
+            alt=""
+            width={280}
+            height={280}
+            priority
+          />
+          <p className="welcome-name">Aetermio saludos, {name}</p>
+        </div>
+      )}
+
+      {stage === "intro" ? null : children}
+    </>
   );
 }

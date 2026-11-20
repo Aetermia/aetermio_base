@@ -93,22 +93,17 @@ export async function updateProject(formData: FormData) {
   revalidatePath(back);
 }
 
-export async function setTaskStatus(formData: FormData) {
+export async function saveTask(formData: FormData) {
   const taskId = text(formData, "task_id");
   const projectId = text(formData, "project_id");
   const status = text(formData, "status") as TaskStatus;
-
-  if (!taskId || !STATUS_ORDER.includes(status)) return;
-  await patchTask(taskId, projectId, { status });
-}
-
-export async function setTaskAssignee(formData: FormData) {
-  const taskId = text(formData, "task_id");
-  const projectId = text(formData, "project_id");
   const assigneeId = text(formData, "assignee_id");
 
-  if (!taskId) return;
-  await patchTask(taskId, projectId, { assignee_id: assigneeId || null });
+  if (!taskId || !STATUS_ORDER.includes(status)) return;
+  await patchTask(taskId, projectId, {
+    status,
+    assignee_id: assigneeId || null,
+  });
 }
 
 export async function assignToMe(formData: FormData) {

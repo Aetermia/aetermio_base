@@ -121,7 +121,12 @@ function defaultsFor(table: Table): Row {
 
 type Op = "select" | "insert" | "update" | "delete" | "upsert";
 
-function builder(table: Table, op: Op, payload: Row = {}, conflict = "id") {
+function builder(
+  table: Table,
+  op: Op,
+  payload: Row | Row[] = {},
+  conflict = "id",
+) {
   const filters: ((row: Row) => boolean)[] = [];
   let orderBy: string | null = null;
   let ascending = true;
@@ -129,27 +134,30 @@ function builder(table: Table, op: Op, payload: Row = {}, conflict = "id") {
 
   function exec() {
     const rows = store()[table];
-
-    if (op === "upsert") {
-      const keys = conflict.split(",").map((key) => key.trim());
-      const hit = rows.find((row) =>
-        keys.every((key) => row[key] === payload[key]),
-      );
-      if (hit) {
-        Object.assign(hit, payload);
-        return { data: hit, error: null };
-      }
-    }
+    const items: Row[] = Array.isArray(payload) ? payload : [payload];
 
     if (op === "insert" || op === "upsert") {
-      const row: Row = { ...defaultsFor(table), ...payload };
-      rows.push(row);
-      return { data: row, error: null };
+      const written: Row[] = [];
+      const keys = conflict.split(",").map((key) => key.trim());
+
+      for (const item of items) {
+        const hit =
+          op === "upsert"
+            ? rows.find((row) => keys.every((key) => row[key] === item[key]))
+            : undefined;
+
+        if (hit) Object.assign(hit, item);
+        else rows.push({ ...defaultsFor(table), ...item });
+        written.push(hit ?? rows[rows.length - 1]);
+      }
+
+      return { data: Array.isArray(payload) ? written : written[0], error: null };
     }
 
     if (op === "update") {
+      const patch = payload as Row;
       const hit = rows.filter((row) => filters.every((filter) => filter(row)));
-      for (const row of hit) Object.assign(row, payload);
+      for (const row of hit) Object.assign(row, patch);
       return { data: hit, error: null };
     }
 
@@ -176,6 +184,10 @@ function builder(table: Table, op: Op, payload: Row = {}, conflict = "id") {
   const api = {
     eq(column: string, value: unknown) {
       filters.push((row) => row[column] === value);
+      return api;
+    },
+    gte(column: string, value: number) {
+      filters.push((row) => Number(row[column]) >= value);
       return api;
     },
     in(column: string, values: unknown[]) {
@@ -258,8 +270,8 @@ export function createLocalClient(cookies: CookieIO) {
     from(table: Table) {
       return {
         select: () => builder(table, "select"),
-        insert: (values: Row) => builder(table, "insert", values),
-        upsert: (values: Row, options?: { onConflict?: string }) =>
+        insert: (values: Row | Row[]) => builder(table, "insert", values),
+        upsert: (values: Row | Row[], options?: { onConflict?: string }) =>
           builder(table, "upsert", values, options?.onConflict),
         update: (values: Row) => builder(table, "update", values),
         delete: () => builder(table, "delete"),

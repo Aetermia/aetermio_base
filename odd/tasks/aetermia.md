@@ -52,7 +52,9 @@ S20. The intro must dismiss even if no JavaScript ever runs. Its timings are CSS
 
 S21. The banner carries two tabs, `Proyectos` and `Lugares`, and the current one is marked. Both stay reachable from every screen, including a phone, where the tabs move to a second row of the banner instead of shrinking.
 
-S22. `Lugares` is a spreadsheet: labelled columns, numbered rows, one cell per input. A cell holds a value plus a font, a size, a text colour and a background colour, and it saves when the cell is left. Cells outside the stored range are empty; the grid can be grown with `Agregar fila` and `Agregar columna`.
+S22. `Lugares` is a spreadsheet: labelled columns, numbered rows, one cell per input. A cell holds a value plus a font, a size, a text colour and a background colour, and it saves by itself. Cells outside the stored range are empty; the grid grows with `Agregar fila` and `Agregar columna` and shrinks with `Quitar fila` and `Quitar columna`, which close the gap so nothing stays behind.
+
+S23. The formatting controls act on one cell, so they are disabled and the bar reads `Elegí una celda` until a cell is picked. Every write reports back: `guardando`, `guardado` or `no se pudo guardar`.
 
 ## Tasks
 
@@ -74,7 +76,9 @@ S22. `Lugares` is a spreadsheet: labelled columns, numbered rows, one cell per i
 - [x] T17 — Edit a task's title and note from the card. `S19` — inline. Evidence: `updateTask` replaces `saveNotes`; the `Editar` block swapped the separate note editor. Renamed `Tarea pendiente` to `Tarea renombrada` in the browser and the column re-rendered with the new title.
 - [x] T18 — Intro dismissal moved to CSS. `S20` — inline. Evidence: with `.welcome` and `.page` injected into a live page and no React involved, the page computed `visibility: hidden` at t=0 and `visible` at t=2600 while the overlay went to `hidden`. Full login run: overlay visible and page hidden at the start, overlay out of the DOM, page visible, URL cleaned.
 - [x] T19 — Banner tabs with the active section marked. `S21` — inline. Evidence: `nav-tabs.tsx` reads the pathname; `Proyectos*` on `/` with `h1` Bienvenido, `Lugares*` on `/lugares`. At 390px the banner measured 112px tall with the two tabs on a second row, 178x44 each, no page overflow.
-- [x] T20 — The `Lugares` sheet. `S22` — inline. Evidence: `place_cells` in `supabase/schema.sql` with `(row_index, col_index)` as primary key, `saveCell` upserting on that pair, 8/8 self-checks including the upsert. Typed into A4, set Georgia 20, red text and a green background, reloaded, and the cell came back with all four. `Agregar fila` and `Agregar columna` grew the grid 12x6 to 13x7.
+- [x] T20 — The `Lugares` sheet. `S22` — inline. Evidence: `place_cells` in `supabase/schema.sql` with `(row_index, col_index)` as primary key, `saveCell` upserting on that pair, 10/10 self-checks including the upsert. Typed into A4, set Georgia 20, red text and a green background, reloaded, and the cell came back with all four.
+- [x] T21 — Formatting gated on a selected cell and reported per write. `S23` — inline. Evidence: on load every control reports `disabled` and the bar reads `Elegí una celda`; after focusing A3 the bar reads `Celda A3` and a font change ends in `Celda A3 · guardado`.
+- [x] T22 — Remove a row or a column, closing the gap. `S22` — inline. Evidence: rows `0 Local, 1 Panadería, 2 Tercero, 10 Abajo` became `0 Local, 1 Panadería, 9 Abajo` after `Quitar fila` on row 3, and a reload agreed. `Quitar columna` on B moved `Folletos` and `Anotado` left with no copy left behind.
 
 
 ## Log
@@ -144,4 +148,14 @@ L31 (colours): the first version only wrote on blur, and a colour picker does no
 L32 (provenance): font, size and colours arrive from the browser and end up in inline CSS, so they are allowlisted in `saveCell` instead of trusted: fonts must be one of `SHEET_FONTS`, sizes one of `SHEET_SIZES`, colours a `#rrggbb` string.
 
 L33 (stand-in child defaults): the local stand-in used to spray `id`, `status`, `notes`, `archived` and friends into every insert, so an insert the real schema would reject looked fine locally. Defaults are now per table, and `place_cells` has none: it has no `id` column at all.
+
+L34 (user, verbatim): "Bien, en la tabla no funciona ninguna de las funciones, ni fuente, tamaño, nada, además deberia tambine poder quitar filas y columnas"
+
+L35 (why formatting looked dead): the toolbar acted on the last cell touched, and before anything is touched that is A1. A user who opens the page, sets `Georgia` and watches the visible area sees nothing change, because the change landed in the header cell. Could not reproduce a total failure when a cell is clicked first: font, size, both colours, and the value all round-trip through the server. The fix is not a guess about the write path, it removes the silence: controls are disabled until a cell is picked, the bar names the target, and every write ends in `guardado` or `no se pudo guardar`.
+
+L36 (saving no longer depends on blur): the write used to hang off `onBlur`, so a control that never loses focus never saved, which is exactly what a colour picker does when its native dialog closes. Every change now schedules a write 500ms after the last one on that cell, and blur still forces it. Earlier the picker also had to be fixed separately; the debounce covers both cases with one rule.
+
+L37 (remove row was wrong twice): the first version deleted the row and shifted the rest down, but only deleted the old bottom row. Empty rows have no cells, so the shift created rows while the originals stayed put, and the grid never got shorter. The second version deleted the removed row too, which still left the copies. It now deletes every row from the removed index down and writes the moved cells afterwards, one bulk write. The self-check uses a gap on purpose (rows 0, 1, 2, 5) because a dense column hides this bug: with every row present the target keys already exist and get overwritten, which is why the first version passed.
+
+L38 (grid rows): `Agregar fila` writes an empty line of cells instead of keeping a counter in the browser, so the size of the sheet lives in one place, the data, and `Quitar fila` works on a row whether or not it holds anything.
 

@@ -1,7 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { saveCell } from "@/app/actions";
+import { useEffect, useRef, useState } from "react";
+import {
+  addSheetCol,
+  addSheetRow,
+  removeSheetCol,
+  removeSheetRow,
+  saveCell,
+} from "@/app/actions";
 import {
   CELL_MAX,
   SHEET_COLS,
@@ -14,6 +20,10 @@ import {
 
 const INK = "#030303";
 const PAPER = "#ffffff";
+const WRITE_DELAY = 500;
+
+type Spot = { row: number; col: number };
+type Status = "idle" | "saving" | "ok" | "error";
 
 function blank(row: number, col: number): PlaceCell {
   return {
@@ -33,15 +43,30 @@ function letter(index: number) {
 
 export function Sheet({ cells: initial }: { cells: PlaceCell[] }) {
   const [cells, setCells] = useState(initial);
-  const [sel, setSel] = useState({ row: 0, col: 0 });
-  const [extraRows, setExtraRows] = useState(0);
-  const [extraCols, setExtraCols] = useState(0);
+  const [spot, setSpot] = useState<Spot | null>(null);
+  const [status, setStatus] = useState<Status>("idle");
 
-  // State drives the render; the ref mirrors it so a format change and its save
-  // can happen in the same event instead of waiting for a re-render.
+  // State drives the render; the ref mirrors it so a change and its save can
+  // happen in the same event instead of waiting for a re-render.
   const cellsRef = useRef(initial);
   const savedRef = useRef(new Map<string, string>());
-  const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+
+  // A delete rewrites the whole sheet server side, so the grid follows the
+  // server whenever it really changed. Equal data is left alone: it would only
+  // undo an edit the browser has and the server is about to receive.
+  useEffect(() => {
+    if (JSON.stringify(initial) === JSON.stringify(cellsRef.current)) return;
+    cellsRef.current = initial;
+    setCells(initial);
+  }, [initial]);
+
+  useEffect(() => {
+    const running = timers.current;
+    return () => {
+      for (const timer of running.values()) clearTimeout(timer);
+    };
+  }, []);
 
   function apply(row: number, col: number, patch: Partial<PlaceCell>) {
     const index = cellsRef.current.findIndex(
@@ -60,10 +85,14 @@ export function Sheet({ cells: initial }: { cells: PlaceCell[] }) {
     setCells(cellsRef.current);
   }
 
-  // Only the cell that changed is written, and only when it differs from the
-  // last thing saved: blur fires on every focus move.
-  function save(row: number, col: number) {
+  async function save(row: number, col: number) {
     const key = `${row}:${col}`;
+    const timer = timers.current.get(key);
+    if (timer) {
+      clearTimeout(timer);
+      timers.current.delete(key);
+    }
+
     const cell = cellsRef.current.find(
       (item) => item.row_index === row && item.col_index === col,
     );
@@ -83,42 +112,52 @@ export function Sheet({ cells: initial }: { cells: PlaceCell[] }) {
 
     if (savedRef.current.get(key) === snapshot) return;
     savedRef.current.set(key, snapshot);
-    void saveCell(input);
+
+    setStatus("saving");
+    const result = await saveCell(input);
+    savedRef.current.delete(key);
+    setStatus(result?.ok ? "ok" : "error");
+  }
+
+  // Typing and colour picking both write once the hand stops, so nothing has to
+  // depend on a control losing focus.
+  function later(row: number, col: number) {
+    const key = `${row}:${col}`;
+    const timer = timers.current.get(key);
+    if (timer) clearTimeout(timer);
+    timers.current.set(
+      key,
+      setTimeout(() => void save(row, col), WRITE_DELAY),
+    );
   }
 
   function format(patch: Partial<PlaceCell>) {
-    apply(sel.row, sel.col, patch);
-    save(sel.row, sel.col);
+    if (!spot) return;
+    apply(spot.row, spot.col, patch);
+    void save(spot.row, spot.col);
   }
 
-  // A colour picker fires on every movement and closing it does not always blur
-  // the input, so local first, then one write once the picking stops.
-  function formatLater(patch: Partial<PlaceCell>) {
-    apply(sel.row, sel.col, patch);
-    if (pending.current) clearTimeout(pending.current);
-    const { row, col } = sel;
-    pending.current = setTimeout(() => save(row, col), 500);
-  }
-
-  const current =
-    cells.find(
-      (cell) => cell.row_index === sel.row && cell.col_index === sel.col,
-    ) ?? blank(sel.row, sel.col);
+  const current = spot
+    ? (cells.find(
+        (cell) =>
+          cell.row_index === spot.row && cell.col_index === spot.col,
+      ) ?? blank(spot.row, spot.col))
+    : null;
 
   const byKey = new Map(
     cells.map((cell) => [`${cell.row_index}:${cell.col_index}`, cell]),
   );
 
-  const rows =
-    Math.max(
-      SHEET_ROWS,
-      ...cells.map((cell) => cell.row_index + 1),
-    ) + extraRows;
-  const cols =
-    Math.max(
-      SHEET_COLS,
-      ...cells.map((cell) => cell.col_index + 1),
-    ) + extraCols;
+  const rows = Math.max(
+    SHEET_ROWS,
+    ...cells.map((cell) => cell.row_index + 1),
+  );
+  const cols = Math.max(
+    SHEET_COLS,
+    ...cells.map((cell) => cell.col_index + 1),
+  );
+
+  const spotLabel = spot ? `Celda ${letter(spot.col)}${spot.row + 1}` : "Elegí una celda";
 
   return (
     <>
@@ -126,7 +165,8 @@ export function Sheet({ cells: initial }: { cells: PlaceCell[] }) {
         <label className="field">
           Fuente
           <select
-            value={current.font_family ?? ""}
+            value={current?.font_family ?? ""}
+            disabled={!spot}
             onChange={(event) =>
               format({ font_family: event.target.value || null })
             }
@@ -142,7 +182,8 @@ export function Sheet({ cells: initial }: { cells: PlaceCell[] }) {
         <label className="field">
           Tamaño
           <select
-            value={current.font_size ?? SHEET_SIZES[1]}
+            value={current?.font_size ?? SHEET_SIZES[1]}
+            disabled={!spot}
             onChange={(event) =>
               format({ font_size: Number(event.target.value) })
             }
@@ -159,9 +200,13 @@ export function Sheet({ cells: initial }: { cells: PlaceCell[] }) {
           Letra
           <input
             type="color"
-            value={current.color ?? INK}
-            onChange={(event) => formatLater({ color: event.target.value })}
-            onBlur={() => save(sel.row, sel.col)}
+            value={current?.color ?? INK}
+            disabled={!spot}
+            onChange={(event) => {
+              if (!spot) return;
+              apply(spot.row, spot.col, { color: event.target.value });
+              later(spot.row, spot.col);
+            }}
           />
         </label>
 
@@ -169,15 +214,20 @@ export function Sheet({ cells: initial }: { cells: PlaceCell[] }) {
           Fondo
           <input
             type="color"
-            value={current.background ?? PAPER}
-            onChange={(event) => formatLater({ background: event.target.value })}
-            onBlur={() => save(sel.row, sel.col)}
+            value={current?.background ?? PAPER}
+            disabled={!spot}
+            onChange={(event) => {
+              if (!spot) return;
+              apply(spot.row, spot.col, { background: event.target.value });
+              later(spot.row, spot.col);
+            }}
           />
         </label>
 
         <button
           type="button"
           className="mini"
+          disabled={!spot}
           onClick={() =>
             format({
               font_family: null,
@@ -191,9 +241,54 @@ export function Sheet({ cells: initial }: { cells: PlaceCell[] }) {
         </button>
 
         <span className="sheet-pos">
-          Celda {letter(sel.col)}
-          {sel.row + 1}
+          {spotLabel}
+          {status === "saving" ? " · guardando" : null}
+          {status === "ok" ? " · guardado" : null}
+          {status === "error" ? " · no se pudo guardar" : null}
         </span>
+
+        <div className="sheet-actions">
+          <button
+            type="button"
+            className="mini"
+            onClick={() => void addSheetRow()}
+          >
+            Agregar fila
+          </button>
+          <button
+            type="button"
+            className="mini"
+            onClick={() => void addSheetCol()}
+          >
+            Agregar columna
+          </button>
+          <button
+            type="button"
+            className="mini"
+            disabled={!spot}
+            onClick={() => {
+              if (!spot) return;
+              const row = spot.row;
+              setSpot(null);
+              void removeSheetRow(row);
+            }}
+          >
+            Quitar fila
+          </button>
+          <button
+            type="button"
+            className="mini"
+            disabled={!spot}
+            onClick={() => {
+              if (!spot) return;
+              const col = spot.col;
+              setSpot(null);
+              void removeSheetCol(col);
+            }}
+          >
+            Quitar columna
+          </button>
+        </div>
       </div>
 
       <div className="sheet-scroll">
@@ -214,7 +309,7 @@ export function Sheet({ cells: initial }: { cells: PlaceCell[] }) {
                 <th scope="row">{row + 1}</th>
                 {Array.from({ length: cols }, (_, col) => {
                   const cell = byKey.get(`${row}:${col}`);
-                  const active = sel.row === row && sel.col === col;
+                  const active = spot?.row === row && spot.col === col;
 
                   return (
                     <td key={col} className={active ? "on" : undefined}>
@@ -229,11 +324,12 @@ export function Sheet({ cells: initial }: { cells: PlaceCell[] }) {
                           color: cell?.color ?? undefined,
                           backgroundColor: cell?.background ?? undefined,
                         }}
-                        onFocus={() => setSel({ row, col })}
-                        onChange={(event) =>
-                          apply(row, col, { value: event.target.value })
-                        }
-                        onBlur={() => save(row, col)}
+                        onFocus={() => setSpot({ row, col })}
+                        onChange={(event) => {
+                          apply(row, col, { value: event.target.value });
+                          later(row, col);
+                        }}
+                        onBlur={() => void save(row, col)}
                       />
                     </td>
                   );
@@ -242,23 +338,6 @@ export function Sheet({ cells: initial }: { cells: PlaceCell[] }) {
             ))}
           </tbody>
         </table>
-      </div>
-
-      <div className="sheet-actions">
-        <button
-          type="button"
-          className="mini"
-          onClick={() => setExtraRows((count) => count + 1)}
-        >
-          Agregar fila
-        </button>
-        <button
-          type="button"
-          className="mini"
-          onClick={() => setExtraCols((count) => count + 1)}
-        >
-          Agregar columna
-        </button>
       </div>
     </>
   );

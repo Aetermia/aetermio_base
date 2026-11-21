@@ -171,3 +171,7 @@ L42 (display name): the trigger now falls back to `initcap(split_part(new.email,
 
 L43 (deploy order): `npm run build` succeeds with no environment variables because every route is dynamic, so a wrong order does not fail the build, it fails at runtime on every page. The Supabase URL and anon key go into Vercel before the first deploy.
 
+L44 (first deploy, user): "\"Internal Server Error\" recibo en vercel".
+
+L45 (diagnosis): reproduced on purpose with `.env.local` removed. Every route answers 500 with `Your project's URL and Key are required to create a Supabase client!`, thrown by `@supabase/ssr` itself, which names neither the variable nor where it should live. That matches a deploy where the two variables never reached the runtime, or reached it after the build: `NEXT_PUBLIC_*` values read from the proxy are baked in at build time, so adding them in Vercel and keeping the old deployment leaves the old, empty values in place. A redeploy is part of the fix, not a retry.
+

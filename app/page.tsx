@@ -78,7 +78,12 @@ export default async function HomePage({
           <h2>Nuevo proyecto</h2>
           <div className="panel">
             {error ? (
-              <p className="error">No se pudo crear el proyecto.</p>
+              <p className="error">
+                No se pudo crear el proyecto.
+                {error !== "1" ? (
+                  <span className="error-detail">{error}</span>
+                ) : null}
+              </p>
             ) : null}
 
             <form action={createProject} className="stack">

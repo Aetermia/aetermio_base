@@ -398,6 +398,16 @@ textarea {
   margin: 0 0 14px;
 }
 
+.error-detail {
+  display: block;
+  margin-top: 6px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  word-break: break-word;
+  opacity: 0.85;
+}
+
 .edit {
   margin-bottom: 8px;
 }

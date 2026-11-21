@@ -62,7 +62,10 @@ export default async function ProjectPage({
       <p className="lede">{project.description ?? "Sin descripción."}</p>
 
       {error ? (
-        <p className="error">No se pudo guardar el cambio.</p>
+        <p className="error">
+          No se pudo guardar el cambio.
+          {error !== "1" ? <span className="error-detail">{error}</span> : null}
+        </p>
       ) : null}
 
       <details className="edit">

@@ -20,6 +20,14 @@ function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
 
+// Three superadmins, one database, no secret in a Postgres message. Hiding it
+// behind a generic line costs a round trip every single time something breaks.
+function reason(error: { message?: string } | null) {
+  const message = String(error?.message ?? "error").slice(0, 160);
+  console.error("[aetermia]", message);
+  return encodeURIComponent(message);
+}
+
 export async function login(formData: FormData) {
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({
@@ -47,7 +55,7 @@ export async function createProject(formData: FormData) {
     description: text(formData, "description") || null,
   });
 
-  if (error) redirect("/?error=1");
+  if (error) redirect(`/?error=${reason(error)}`);
   revalidatePath("/");
 }
 
@@ -65,7 +73,7 @@ export async function createTask(formData: FormData) {
     notes: text(formData, "notes") || null,
   });
 
-  if (error) redirect(`${back}?error=1`);
+  if (error) redirect(`${back}?error=${reason(error)}`);
   revalidatePath(back);
 }
 
@@ -82,7 +90,7 @@ async function patchTask(
 
   // Surface the failure: an unchecked write leaves the select showing a value
   // the database never accepted.
-  if (error) redirect(`/projects/${projectId}?error=1`);
+  if (error) redirect(`/projects/${projectId}?error=${reason(error)}`);
   revalidatePath(`/projects/${projectId}`);
 }
 
@@ -99,7 +107,7 @@ export async function updateProject(formData: FormData) {
     .update({ name, description: text(formData, "description") || null })
     .eq("id", projectId);
 
-  if (error) redirect(`${back}?error=1`);
+  if (error) redirect(`${back}?error=${reason(error)}`);
   revalidatePath("/");
   revalidatePath(back);
 }
@@ -165,7 +173,7 @@ export async function createLink(formData: FormData) {
     .from("links")
     .insert({ project_id: projectId, label, url });
 
-  if (error) redirect(`${back}?error=1`);
+  if (error) redirect(`${back}?error=${reason(error)}`);
   revalidatePath(back);
 }
 
@@ -178,7 +186,7 @@ export async function deleteLink(formData: FormData) {
   const supabase = await createClient();
   const { error } = await supabase.from("links").delete().eq("id", linkId);
 
-  if (error) redirect(`/projects/${projectId}?error=1`);
+  if (error) redirect(`/projects/${projectId}?error=${reason(error)}`);
   revalidatePath(`/projects/${projectId}`);
 }
 

@@ -99,3 +99,13 @@ $$;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- Supabase usually grants these to the API roles when it creates the table with
+-- its own default privileges. This project was created without them, so the API
+-- answered "permission denied for table projects" while the policies above were
+-- perfectly fine: policies filter rows, these grants allow the table at all.
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant execute on all functions in schema public to authenticated;
+alter default privileges in schema public
+  grant select, insert, update, delete on tables to authenticated;

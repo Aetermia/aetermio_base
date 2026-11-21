@@ -173,5 +173,7 @@ L43 (deploy order): `npm run build` succeeds with no environment variables becau
 
 L44 (first deploy, user): "\"Internal Server Error\" recibo en vercel".
 
+L46 (first real run): two blocks after the deploy, in this order. The variables were stored as `NEXT_SUPABASE_URL` and `NEXT_SUPABASE_ANON_KEY`, so the app found none: `supabaseConfig` now reads either form, which costs nothing because no Supabase call runs in the browser. Then `permission denied for table projects`: grants are table level, policies are row level, and this project was created without the default privileges Supabase usually applies. Running a policy does not imply the privilege to reach the table, so `createProject` failed while everyone, me included, argued about RLS. Both are in `schema.sql` now.
+
 L45 (diagnosis): reproduced on purpose with `.env.local` removed. Every route answers 500 with `Your project's URL and Key are required to create a Supabase client!`, thrown by `@supabase/ssr` itself, which names neither the variable nor where it should live. That matches a deploy where the two variables never reached the runtime, or reached it after the build: `NEXT_PUBLIC_*` values read from the proxy are baked in at build time, so adding them in Vercel and keeping the old deployment leaves the old, empty values in place. A redeploy is part of the fix, not a retry.
 

@@ -56,6 +56,8 @@ S22. `Lugares` is a spreadsheet: labelled columns, numbered rows, one cell per i
 
 S23. The formatting controls act on one cell, so they are disabled and the bar reads `Elegí una celda` until a cell is picked. Every write reports back: `guardando`, `guardado` or `no se pudo guardar`.
 
+S24. The group signs in with a name, not an email: typing `Ezequiel` signs in the `ezequiel@aetermia.app` account. Supabase still stores one account per person on that domain, so a full email typed by hand keeps working.
+
 ## Tasks
 
 - [x] T1 — Scaffold Next.js (App Router, TypeScript, no Tailwind, plain CSS). `S9` — inline. Evidence: Next 16.4.6, `next.config.ts` with cache flags off.
@@ -158,4 +160,14 @@ L36 (saving no longer depends on blur): the write used to hang off `onBlur`, so 
 L37 (remove row was wrong twice): the first version deleted the row and shifted the rest down, but only deleted the old bottom row. Empty rows have no cells, so the shift created rows while the originals stayed put, and the grid never got shorter. The second version deleted the removed row too, which still left the copies. It now deletes every row from the removed index down and writes the moved cells afterwards, one bulk write. The self-check uses a gap on purpose (rows 0, 1, 2, 5) because a dense column hides this bug: with every row present the target keys already exist and get overwritten, which is why the first version passed.
 
 L38 (grid rows): `Agregar fila` writes an empty line of cells instead of keeping a counter in the browser, so the size of the sheet lives in one place, the data, and `Quitar fila` works on a row whether or not it holds anything.
+
+L39 (user, verbatim): "Che ya lo puedo subir a vercel y supabase? Los usuarios y contraseña tienen que ser: Ezequiel / !Ezequiel?! Merlina / !Merlina?! Santino / !Santino?!"
+
+L40 (not yet, and why): the real path has never run. Every screen so far was exercised against the in memory stand-in, so RLS policies, the profile trigger, `place_cells` on a real Postgres and GoTrue login are all unverified. Deploying now would be the first time those run, in production, with three people watching.
+
+L41 (names vs emails): Supabase signs in by email, so the three accounts are `ezequiel@`, `merlina@` and `santino@aetermia.app`. The login form takes a bare name and `toEmail` appends the domain, so the group never types an address. A typed address still passes through untouched.
+
+L42 (display name): the trigger now falls back to `initcap(split_part(new.email, '@', 1))` instead of the raw prefix, so an account created without metadata still reads `Ezequiel` and not `ezequiel` in the header.
+
+L43 (deploy order): `npm run build` succeeds with no environment variables because every route is dynamic, so a wrong order does not fail the build, it fails at runtime on every page. The Supabase URL and anon key go into Vercel before the first deploy.
 

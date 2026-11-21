@@ -25,8 +25,15 @@ export default async function LoginPage({
 
         <form action={login} className="stack">
           <label>
-            Email
-            <input name="email" type="email" required autoComplete="email" />
+            Usuario
+            <input
+              name="email"
+              required
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              placeholder="Ezequiel"
+            />
           </label>
           <label>
             Contraseña
@@ -39,7 +46,7 @@ export default async function LoginPage({
           </label>
 
           {error ? (
-            <p className="error">Email o contraseña incorrectos.</p>
+            <p className="error">Usuario o contraseña incorrectos.</p>
           ) : null}
 
           <SubmitButton className="btn">Entrar</SubmitButton>

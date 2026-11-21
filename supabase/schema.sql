@@ -76,6 +76,7 @@ create policy "authenticated full access" on public.place_cells
   for all to authenticated using (true) with check (true);
 
 -- Users are created by hand in the dashboard, so the profile row follows them.
+-- The fallback is capitalised so a name typed as ezequiel reads Ezequiel.
 create function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -86,7 +87,10 @@ begin
   insert into public.profiles (id, display_name)
   values (
     new.id,
-    coalesce(new.raw_user_meta_data ->> 'full_name', split_part(new.email, '@', 1))
+    coalesce(
+      nullif(new.raw_user_meta_data ->> 'full_name', ''),
+      initcap(split_part(new.email, '@', 1))
+    )
   );
   return new;
 end;

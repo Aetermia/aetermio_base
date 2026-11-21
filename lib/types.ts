@@ -74,3 +74,12 @@ export const SHEET_SIZES = [12, 14, 16, 20, 24];
 export const SHEET_ROWS = 12;
 export const SHEET_COLS = 6;
 export const CELL_MAX = 200;
+
+// Supabase signs in by email, the group signs in by name. The three accounts
+// live on this domain, so a bare user name is turned into one before the call.
+export const USER_DOMAIN = "aetermia.app";
+
+export function toEmail(value: string) {
+  const clean = value.trim().toLowerCase();
+  return clean.includes("@") ? clean : `${clean}@${USER_DOMAIN}`;
+}

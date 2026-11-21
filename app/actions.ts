@@ -10,6 +10,7 @@ import {
   SHEET_ROWS,
   SHEET_SIZES,
   STATUS_ORDER,
+  toEmail,
   type CellInput,
   type PlaceCell,
   type TaskStatus,
@@ -22,7 +23,7 @@ function text(formData: FormData, key: string) {
 export async function login(formData: FormData) {
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({
-    email: text(formData, "email"),
+    email: toEmail(text(formData, "email")),
     password: String(formData.get("password") ?? ""),
   });
 

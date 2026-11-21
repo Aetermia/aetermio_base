@@ -1,14 +1,35 @@
-// Both runtimes need this: a missing variable used to surface as the library's
-// own message, which says nothing about where the value is supposed to come from.
+// The canonical names carry the NEXT_PUBLIC_ prefix, but nothing here ever
+// reaches the browser: every Supabase call happens on the server. So the plain
+// names are accepted too, which is what this project ended up with.
+const NAMES = [
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "NEXT_SUPABASE_URL",
+  "SUPABASE_URL",
+];
+
+const KEYS = [
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+  "NEXT_SUPABASE_ANON_KEY",
+  "SUPABASE_ANON_KEY",
+];
+
+function first(names: string[]) {
+  for (const name of names) {
+    const value = process.env[name];
+    if (value) return { name, value };
+  }
+  return null;
+}
+
 export function supabaseConfig() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = first(NAMES);
+  const key = first(KEYS);
 
   if (!url || !key) {
     throw new Error(
-      "Supabase is not configured for this deployment: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must exist in the Vercel project for Production, and environment changes only apply to a new deployment.",
+      `Supabase is not configured for this deployment: none of ${NAMES.join(", ")} and none of ${KEYS.join(", ")} is set. Environment changes on Vercel only apply to a new deployment.`,
     );
   }
 
-  return { url, key };
+  return { url: url.value, key: key.value };
 }
